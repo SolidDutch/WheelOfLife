@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Wheel of Life</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600&display=swap');
+
+        body {
+            font-family: 'Syne', sans-serif;
+            background-color: #BFE5FC;
+            color: #001246;
+            text-align: center;
+            padding: 20px;
+            margin-bottom: 60px; /* Give some space at the bottom for the button */
+            position: relative;
+            min-height: 100vh; /* Ensure the page stretches to full height */
+        }
+
+        canvas {
+            margin-top: 20px;
+            background-color: #BFE5FC;
+            border: none;
+        }
+
+        #info {
+            margin: 20px;
+            font-size: 1.1em;
+        }
+
+        /* "Tim Vos" and copyright in the bottom left of the page */
+        #footer {
+            position: absolute;
+            left: 20px;
+            bottom: 20px;
+            font-size: 24px;
+            font-family: 'Syne', sans-serif;
+            color: #001246;
+        }
+
+        /* Print to PDF button positioned at the bottom of the page */
+        #printButton {
+            display: block;
+            width: 200px;
+            padding: 10px 20px;
+            background-color: #FE4600;
+            color: white;
+            font-size: 18px;
+            font-family: 'Syne', sans-serif;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 30px auto 0; /* Centered horizontally with margin */
+        }
+
+        #printButton:hover {
+            background-color: #e03d00;
+        }
+
+        /* Bold text styling for Satisfaction Level */
+        .bold {
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interactive Wheel of Life</h1>
+    <p>Review the 8 categories of the wheel – take a moment to reflect on how satisfied you are with these 8 elements in your life.<br>Click on the segments to adjust satisfaction levels (1-10) for each area.</p>
+
+    <div id="info"><span id="selectedArea" class="bold">Currently editing: None</span></div>
+
+    <canvas id="wheelCanvas" width="800" height="800"></canvas>
+
+    <!-- Footer with name and copyright -->
+    <div id="footer">
+        © Tim Vos
+    </div>
+
+    <!-- Print to PDF button -->
+    <button id="printButton">Print to PDF</button>
+
+    <script>
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const selectedAreaInfo = document.getElementById('selectedArea');
+
+        const areas = [
+            "Significant Other", // Soft Coral Red
+            "Personal Growth",   // Pale Pink
+            "Fun & Leisure",     // Soft Lavender
+            "Home Environment",  // Light Cyan
+            "Career",            // Mint Green
+            "Money",             // Soft Lime Green
+            "Health",            // Pastel Yellow
+            "Friends & Family"   // Peachy Orange
+        ];
+
+        const values = new Array(areas.length).fill(1); // Default levels for each area (1-10), starting at 1
+        const colors = [
+            '#E57373', // Soft Coral Red
+            '#F8C8D6', // Pale Pink
+            '#D9D6F8', // Soft Lavender
+            '#A3EAF9', // Light Cyan
+            '#73F2B1', // Mint Green
+            '#C4F986', // Soft Lime Green
+            '#F8F59E', // Pastel Yellow
+            '#FBC88E'  // Peachy Orange
+        ];
+
+        const maxRadius = 250; // Outer circle radius
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const angleStep = (2 * Math.PI) / areas.length;
+        const outerMargin = 40; // Margin to fit text outside the wheel
+
+        // Function to draw the Wheel of Life
+        function drawWheel() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw segments with color only if level > 1
+            for (let i = 0; i < areas.length; i++) {
+                const startAngle = i * angleStep;
+                const endAngle = startAngle + angleStep;
+
+                // Draw background for segment (white by default)
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, maxRadius, startAngle, endAngle);
+                ctx.closePath();
+                ctx.fillStyle = 'white';
+                ctx.fill();
+
+                // Draw active level for segment (filled color)
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(
+                    centerX,
+                    centerY,
+                    (maxRadius / 10) * values[i], // Scale level to radius
+                    startAngle,
+                    endAngle
+                );
+                ctx.closePath();
+                ctx.fillStyle = colors[i];
+                ctx.fill();
+
+                // Draw segment border
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, maxRadius, startAngle, endAngle);
+                ctx.strokeStyle = '#ccc';
+                ctx.stroke();
+            }
+
+            // Draw concentric circles for levels 1 to 10
+            for (let i = 1; i <= 10; i++) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, (maxRadius / 10) * i, 0, 2 * Math.PI);
+                ctx.strokeStyle = '#eee';
+                ctx.stroke();
+            }
+
+            // Draw labels outside the wheel
+            for (let i = 0; i < areas.length; i++) {
+                const labelAngle = i * angleStep + angleStep / 2; // Midpoint of segment
+                const labelRadius = maxRadius + outerMargin; // Position outside the wheel
+
+                // Calculate text position
+                const labelX = centerX + labelRadius * Math.cos(labelAngle);
+                const labelY = centerY + labelRadius * Math.sin(labelAngle);
+
+                // Draw the text inside each label
+                ctx.font = '16px Syne';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#001246';
+                
+                // If text is too long, break it into two lines
+                const lines = splitTextToFit(areas[i], 15); // Try to fit 15 characters per line
+                const textHeight = 20;
+                lines.forEach((line, index) => {
+                    ctx.fillText(line, labelX, labelY + (index * textHeight));
+                });
+            }
+        }
+
+        // Helper function to split long text into multiple lines
+        function splitTextToFit(text, maxLength) {
+            const words = text.split(' ');
+            const lines = [];
+            let currentLine = '';
+            words.forEach(word => {
+                if (currentLine.length + word.length + 1 <= maxLength) {
+                    currentLine += (currentLine ? ' ' : '') + word;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
+            });
+            if (currentLine) lines.push(currentLine); // Add any remaining text
+            return lines;
+        }
+
+        // Helper function to get clicked segment and level
+        function getClickedSegmentAndLevel(x, y) {
+            const dx = x - centerX;
+            const dy = y - centerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angle = (Math.atan2(dy, dx) + 2 * Math.PI) % (2 * Math.PI); // Normalize angle
+
+            const segmentIndex = Math.floor(angle / angleStep) % areas.length;
+            const level = Math.ceil((distance / maxRadius) * 10);
+
+            return {
+                segment: segmentIndex,
+                level: Math.min(Math.max(level, 1), 10), // Clamp level between 1 and 10
+            };
+        }
+
+        // Handle canvas click
+        canvas.addEventListener('click', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            const { segment, level } = getClickedSegmentAndLevel(x, y);
+
+            // Update values and selected area
+            values[segment] = level;
+            selectedAreaInfo.innerHTML = `Currently editing: <span class="bold">${areas[segment]} (Satisfaction level: ${level})</span>`;
+
+            drawWheel();
+        });
+
+        // Initial draw
+        drawWheel();
+
+        // Print to PDF function
+        document.getElementById('printButton').addEventListener('click', () => {
+            window.print();
+        });
+    </script>
+</body>
+</html>
